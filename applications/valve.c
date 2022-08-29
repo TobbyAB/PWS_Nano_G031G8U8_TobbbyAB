@@ -40,7 +40,7 @@ void valve_init(void)
 }
 void valve_open(void)
 {
-    led_valve_open();
+//    led_valve_open();
     ValvePastStatus = ValveNowStatus;
     ValveNowStatus = 1;
     HAL_GPIO_WritePin(GPIOA, VALVE_1_PIN | VALVE_2_PIN, 1);
@@ -198,7 +198,7 @@ void Moto_Init(void)
 //    list_mem();
 
     valve_open();
-    button_press();
+//    button_press();
 //    led_water_alarm();
 }
 void Moto_Detect(void)
