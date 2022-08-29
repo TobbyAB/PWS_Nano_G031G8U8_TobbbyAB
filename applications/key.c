@@ -61,10 +61,13 @@ void K0_Sem_Release(void *parameter) //off
     {
         in_alarm_press();
     }
-    else if (HAL_GPIO_ReadPin(GPIOB, HALL_1_PIN) == 1 || HAL_GPIO_ReadPin(GPIOB, HALL_2_PIN) == 1 )
+    else if (Get_ValveNowStatus() == 1 )
     {
-        led_red_in_check();
-        Moto_Detect();
+        if (HAL_GPIO_ReadPin(GPIOB, HALL_1_PIN) == 1 || HAL_GPIO_ReadPin(GPIOB, HALL_2_PIN) == 1 )
+        {
+            led_red_in_check();
+            Moto_Detect();
+        }
     }
     else
     {

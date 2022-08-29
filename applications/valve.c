@@ -12,6 +12,7 @@
 
 rt_timer_t Moto1_Timer_Act, Moto2_Timer_Act = RT_NULL;
 rt_timer_t Moto1_Timer_Detect, Moto2_Timer_Detect = RT_NULL;
+rt_timer_t Moto_Timer_Open = RT_NULL;
 
 uint8_t Turn1_Flag;
 uint8_t Turn2_Flag;
@@ -22,9 +23,44 @@ uint8_t ValveNowStatus;
 uint8_t Moto1_Fail_FLag;
 uint8_t Moto2_Fail_FLag;
 
+uint8_t Moto_Open_Status;
+
 uint8_t Valve_Alarm_Flag;
 
 uint32_t count = 0;
+
+void relay_init(void)
+{
+    GPIO_InitTypeDef gpio_init_structure = { 0 };
+    __HAL_RCC_GPIOC_CLK_ENABLE()
+    ;
+    __HAL_RCC_GPIOA_CLK_ENABLE()
+    ;
+    /* Configure the Radio Switch pin */
+    gpio_init_structure.Pin = GPIO_PIN_6 | GPIO_PIN_2;
+    gpio_init_structure.Mode = GPIO_MODE_OUTPUT_PP;
+    gpio_init_structure.Pull = GPIO_NOPULL;
+    gpio_init_structure.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    HAL_GPIO_Init(GPIOA, &gpio_init_structure);
+    HAL_GPIO_Init(GPIOC, &gpio_init_structure);
+}
+
+void set_relay_on()
+{
+    HAL_GPIO_WritePin(RELAY_ON_PORT, RELAY_ON_PIN, 0);
+    HAL_GPIO_WritePin(RELAY_OFF_PORT, RELAY_OFF_PIN, 0);
+    HAL_GPIO_WritePin(RELAY_ON_PORT, RELAY_ON_PIN, 1);
+    rt_thread_mdelay(200);
+    HAL_GPIO_WritePin(RELAY_ON_PORT, RELAY_ON_PIN, 0);
+}
+void set_relay_off()
+{
+    HAL_GPIO_WritePin(RELAY_ON_PORT, RELAY_ON_PIN, 0);
+    HAL_GPIO_WritePin(RELAY_OFF_PORT, RELAY_OFF_PIN, 0);
+    HAL_GPIO_WritePin(RELAY_OFF_PORT, RELAY_OFF_PIN, 1);
+    rt_thread_mdelay(200);
+    HAL_GPIO_WritePin(RELAY_OFF_PORT, RELAY_OFF_PIN, 0);
+}
 
 void valve_init(void)
 {
@@ -38,19 +74,24 @@ void valve_init(void)
     gpio_init_structure.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
     HAL_GPIO_Init(GPIOA, &gpio_init_structure);
 }
+
 void valve_open(void)
 {
 //    led_valve_open();
     ValvePastStatus = ValveNowStatus;
     ValveNowStatus = 1;
     HAL_GPIO_WritePin(GPIOA, VALVE_1_PIN | VALVE_2_PIN, 1);
+    rt_timer_start(Moto_Timer_Open);
+    set_relay_on();
 }
 void valve_close(void)
 {
     led_valve_close();
     ValvePastStatus = ValveNowStatus;
     ValveNowStatus = 0;
+    Moto_Open_Status = 0;
     HAL_GPIO_WritePin(GPIOA, VALVE_1_PIN | VALVE_2_PIN, 0);
+    set_relay_off();
 }
 void Turn1_Edge_Callback(void)
 {
@@ -65,9 +106,8 @@ void Turn2_Edge_Callback(void)
 
 uint8_t Get_ValveNowStatus(void)
 {
-    return ValveNowStatus;
+    return Moto_Open_Status;
 }
-
 
 uint8_t Get_Moto1_Fail_FLag(void)
 {
@@ -125,6 +165,7 @@ void Turn2_Timer_Callback(void)
         Moto2_Fail_FLag = 0;
         Valve_Alarm_Flag = 0;
     }
+    led_red_out_check();
 }
 void EXTI4_15_IRQHandler(void)
 {
@@ -164,9 +205,16 @@ void Moto2_Timer_Act_Callback(void *parameter)
     rt_timer_start(Moto2_Timer_Detect);
 }
 
+void Moto_Open_Timer_Callback(void *parameter)
+{
+    Moto_Open_Status = 1;
+//    led_valve_close();
+}
+
 void Moto_Init(void)
 {
     valve_init();
+    relay_init();
 //    led_water_alarm();
     GPIO_InitTypeDef GPIO_InitStruct = { 0 };
 
@@ -195,9 +243,13 @@ void Moto_Init(void)
     RT_TIMER_FLAG_ONE_SHOT | RT_TIMER_FLAG_SOFT_TIMER);
     Moto2_Timer_Detect = rt_timer_create("Moto2_Timer_Detect", Turn2_Timer_Callback, RT_NULL, 5000,
     RT_TIMER_FLAG_ONE_SHOT | RT_TIMER_FLAG_SOFT_TIMER);
+    Moto_Timer_Open = rt_timer_create("Moto_Timer_Open", Moto_Open_Timer_Callback, RT_NULL, 11000,
+    RT_TIMER_FLAG_ONE_SHOT | RT_TIMER_FLAG_SOFT_TIMER);
+
 //    list_mem();
 
     valve_open();
+
 //    button_press();
 //    led_water_alarm();
 }
@@ -215,7 +267,6 @@ void Moto_Detect(void)
         if (HAL_GPIO_ReadPin(GPIOB, HALL_1_PIN))
         {
             rt_kprintf("Actuater_1 check start .. \n");
-
             Key_IO_DeInit();
             WaterScan_IO_DeInit();
             HAL_GPIO_WritePin(GPIOA, VALVE_1_PIN, 0);

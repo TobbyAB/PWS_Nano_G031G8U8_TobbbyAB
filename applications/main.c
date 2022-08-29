@@ -17,9 +17,13 @@ int main(void)
     Moto_Init();
     RTC_Init();
     Watchdog_Init();
+
     while (1)
     {
         Watchdog_Refresh();
+//        set_relay_on();
+//        rt_thread_mdelay(1000);
+//        set_relay_off();
         rt_thread_mdelay(1000);
     }
     return RT_EOK;
