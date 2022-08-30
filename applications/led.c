@@ -73,6 +73,8 @@ void led_valve_close(void)
     agile_led_stop(led_green);
     agile_led_start(press_red);
 }
+
+
 void led_water_alarm(void)
 {
     agile_led_set_light_mode(led_red,"200,200,200,200,200,5000", -1);
@@ -101,8 +103,9 @@ void led_lost_resume(void)
 void led_valve_alarm(void)
 {
     agile_led_stop(led_green);
-    agile_led_set_light_mode(led_red, "200,200,200,200,200,200,200,200,200,200,200,5000", 2);
-    agile_beep_set_light_mode(beep,"200,200,200,200,200,200,200,200,200,200,200,5000", 2);
+    agile_led_stop(in_check_led_red);
+    agile_led_set_light_mode(led_red, "200,200,200,200,200,200,200,200,200,200,200,5000", -1);
+    agile_beep_set_light_mode(beep,"200,200,200,200,200,200,200,200,200,200,200,5000", -1);
     agile_led_start(led_red);
     agile_beep_start(beep);
 }

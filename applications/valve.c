@@ -12,7 +12,7 @@
 
 rt_timer_t Moto1_Timer_Act, Moto2_Timer_Act = RT_NULL;
 rt_timer_t Moto1_Timer_Detect, Moto2_Timer_Detect = RT_NULL;
-rt_timer_t Moto_Timer_Open = RT_NULL;
+rt_timer_t MotoCheck_Outimer = RT_NULL;
 
 uint8_t Turn1_Flag;
 uint8_t Turn2_Flag;
@@ -81,7 +81,7 @@ void valve_open(void)
     ValvePastStatus = ValveNowStatus;
     ValveNowStatus = 1;
     HAL_GPIO_WritePin(GPIOA, VALVE_1_PIN | VALVE_2_PIN, 1);
-    rt_timer_start(Moto_Timer_Open);
+    rt_timer_start(MotoCheck_Outimer);
     set_relay_on();
 }
 void valve_close(void)
@@ -109,6 +109,11 @@ uint8_t Get_ValveNowStatus(void)
     return Moto_Open_Status;
 }
 
+void Change_ValveNowStatus(void)
+{
+     Moto_Open_Status = 1;
+}
+
 uint8_t Get_Moto1_Fail_FLag(void)
 {
     return Moto1_Fail_FLag;
@@ -119,40 +124,56 @@ uint8_t Get_Moto2_Fail_FLag(void)
 }
 void Turn1_Timer_Callback(void)
 {
-    rt_kprintf("Turn1_Timer_Callback1\n");
+//    rt_kprintf("Turn1_Timer_Callback1\n");
+//    Key_IO_Init();
+//    WaterScan_IO_Init();
+////    HAL_GPIO_WritePin(GPIOA, VALVE_1_PIN, 1);
+//    rt_kprintf("Turn1_Timer_Callback2\n");
+//    if (Turn1_Flag < 2)
+//    {
+//        rt_kprintf("turun1\n");
+//        if (!Moto2_Fail_FLag)
+//        {
+//            rt_kprintf("Turn1_Flag = %d\n", Turn1_Flag);
+//            led_valve_alarm();
+//            rt_kprintf("turun3\n");
+//            Valve_Alarm_Flag = 1;
+//        }
+//        Moto1_Fail_FLag = 1;
+//    }
+//    else
+//    {
+//        rt_kprintf("turun2\n");
+//        if (!Moto2_Fail_FLag)
+//        {
+//            led_valve_resume();
+//            Valve_Alarm_Flag = 0;
+//        }
+//        Moto1_Fail_FLag = 0;
+//    }
+//    led_red_out_check();
+
     Key_IO_Init();
     WaterScan_IO_Init();
-    HAL_GPIO_WritePin(GPIOA, VALVE_1_PIN, 1);
-    rt_kprintf("Turn1_Timer_Callback2\n");
     if (Turn1_Flag < 2)
     {
-        rt_kprintf("turun1\n");
-        if (!Moto2_Fail_FLag)
-        {
-            rt_kprintf("Turn1_Flag = %d\n", Turn1_Flag);
-            led_valve_alarm();
-            rt_kprintf("turun3\n");
-            Valve_Alarm_Flag = 1;
-        }
+        led_valve_alarm();
         Moto1_Fail_FLag = 1;
+        Valve_Alarm_Flag = 1;
     }
     else
     {
-        rt_kprintf("turun2\n");
-        if (!Moto2_Fail_FLag)
-        {
-            led_valve_resume();
-            Valve_Alarm_Flag = 0;
-        }
+        led_valve_resume();
         Moto1_Fail_FLag = 0;
+        Valve_Alarm_Flag = 0;
+        led_red_out_check();
     }
-    led_red_out_check();
+
 }
 void Turn2_Timer_Callback(void)
 {
     Key_IO_Init();
     WaterScan_IO_Init();
-    HAL_GPIO_WritePin(GPIOA, VALVE_2_PIN, 1);
     if (Turn2_Flag < 2)
     {
         led_valve_alarm();
@@ -164,8 +185,8 @@ void Turn2_Timer_Callback(void)
         led_valve_resume();
         Moto2_Fail_FLag = 0;
         Valve_Alarm_Flag = 0;
+        led_red_out_check();
     }
-    led_red_out_check();
 }
 void EXTI4_15_IRQHandler(void)
 {
@@ -205,9 +226,10 @@ void Moto2_Timer_Act_Callback(void *parameter)
     rt_timer_start(Moto2_Timer_Detect);
 }
 
-void Moto_Open_Timer_Callback(void *parameter)
+void MotoCheck_Outimer_Callback(void *parameter)
 {
     Moto_Open_Status = 1;
+//    button_press();
 //    led_valve_close();
 }
 
@@ -243,7 +265,7 @@ void Moto_Init(void)
     RT_TIMER_FLAG_ONE_SHOT | RT_TIMER_FLAG_SOFT_TIMER);
     Moto2_Timer_Detect = rt_timer_create("Moto2_Timer_Detect", Turn2_Timer_Callback, RT_NULL, 5000,
     RT_TIMER_FLAG_ONE_SHOT | RT_TIMER_FLAG_SOFT_TIMER);
-    Moto_Timer_Open = rt_timer_create("Moto_Timer_Open", Moto_Open_Timer_Callback, RT_NULL, 11000,
+    MotoCheck_Outimer = rt_timer_create("MotoCheck_Outimer", MotoCheck_Outimer_Callback, RT_NULL, 11000,
     RT_TIMER_FLAG_ONE_SHOT | RT_TIMER_FLAG_SOFT_TIMER);
 
 //    list_mem();
@@ -257,7 +279,7 @@ void Moto_Detect(void)
 {
     uint8_t ValveFuncFlag = ValveNowStatus;
     rt_kprintf("ValveFuncFlag = %d ,count = %d \n", ValveFuncFlag, count++);
-
+    led_valve_resume();
     if (ValveFuncFlag == 1)
     {
         Turn1_Flag = 0;
@@ -266,6 +288,7 @@ void Moto_Detect(void)
         Moto2_Fail_FLag = 0;
         if (HAL_GPIO_ReadPin(GPIOB, HALL_1_PIN))
         {
+            led_red_in_check();
             rt_kprintf("Actuater_1 check start .. \n");
             Key_IO_DeInit();
             WaterScan_IO_DeInit();
@@ -274,6 +297,7 @@ void Moto_Detect(void)
         }
         if (HAL_GPIO_ReadPin(GPIOB, HALL_2_PIN))
         {
+            led_red_in_check();
             rt_kprintf("Actuater_2 check start .. \n");
             Key_IO_DeInit();
             WaterScan_IO_DeInit();

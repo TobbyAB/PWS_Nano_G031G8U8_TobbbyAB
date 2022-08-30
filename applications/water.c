@@ -18,6 +18,9 @@ uint8_t WarningStatus = 0;
 uint8_t water_alarm_state;
 uint8_t water_alarm_flag;
 
+extern uint8_t Valve_Alarm_Flag;
+
+
 rt_thread_t WaterScan_t = RT_NULL;
 
 void WarningWithPeak(uint8_t status)
@@ -37,11 +40,13 @@ void WarningWithPeak(uint8_t status)
     case 2: //测水线短路
         water_alarm_flag = 1;
         water_alarm_state = 1;
+//        Valve_Alarm_Flag = 0;
         led_water_alarm();
         valve_close();
         break;
     case 3: //测水线短路解除
         water_alarm_state = 0;
+//        Change_ValveNowStatus();
         //MasterStatusChangeToDeAvtive();
         break;
     }
@@ -50,6 +55,11 @@ void WaterScan_Clear(void)
 {
     WarningPastStatus = 0;
     WarningNowStatus = 0;
+    WarningStatus = 0;
+}
+
+void WarningStatus_Clear(void)
+{
     WarningStatus = 0;
 }
 uint8_t Water_Alarm_Pause;
@@ -137,7 +147,7 @@ void WaterScan_Callback(void *parameter)
                     WarningStatus = 1 << 1;
                 }
             }
-            else if (WarningPastStatus == 0 && WarningNowStatus == 1)
+            else if (WarningPastStatus == 0 && WarningNowStatus == 1 && Valve_Alarm_Flag == 0)
             {
                 if (WarningStatus != 1 << 2)
                 {
@@ -169,8 +179,11 @@ void WaterScan_Callback(void *parameter)
         {
             if (WarningStatus != 1 << 5)
             {
-                led_valve_open();
-                button_press();
+               if (Valve_Alarm_Flag == 0)
+               {
+                   led_valve_open();
+                   button_press();
+               }
                 WarningStatus = 1 << 5;
             }
         }

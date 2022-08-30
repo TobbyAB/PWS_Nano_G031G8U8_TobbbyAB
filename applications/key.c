@@ -22,6 +22,9 @@ extern uint8_t water_alarm_flag; //报警标志
 extern uint8_t water_alarm_state; //当前状态
 extern uint8_t Valve_Alarm_Flag;
 
+extern uint8_t ValveNowStatus;
+extern uint8_t WarningPastStatus;
+
 void Key_IO_Init(void)
 {
     GPIO_InitTypeDef gpio_init_structure = { 0 };
@@ -53,29 +56,47 @@ uint8_t Read_RESET_Level(void)
 
 void K0_Sem_Release(void *parameter) //off
 {
-    if (water_alarm_state)
+//    if (water_alarm_state)
+//    {
+//        in_alarm_press_calcel_sound();
+//    }
+//    else if (Valve_Alarm_Flag)
+//    {
+//        in_alarm_press();
+//    }
+//    else if (Get_ValveNowStatus() == 1 )
+//    {
+//        if (HAL_GPIO_ReadPin(GPIOB, HALL_1_PIN) == 1 || HAL_GPIO_ReadPin(GPIOB, HALL_2_PIN) == 1 )
+//        {
+//            led_red_in_check();
+//            Moto_Detect();
+//        }
+//    }
+    if (!water_alarm_flag)
     {
-        in_alarm_press_calcel_sound();
+//        led_valve_resume();
+        Moto_Detect();
+
     }
-    else if (Valve_Alarm_Flag)
-    {
-        in_alarm_press();
-    }
-    else if (Get_ValveNowStatus() == 1 )
-    {
-        if (HAL_GPIO_ReadPin(GPIOB, HALL_1_PIN) == 1 || HAL_GPIO_ReadPin(GPIOB, HALL_2_PIN) == 1 )
-        {
-            led_red_in_check();
-            Moto_Detect();
-        }
-    }
-    else
+    else if (!water_alarm_state)
     {
         water_alarm_flag = 0;
-        WaterScan_Clear();
-        led_water_resume();
-        button_press();
-        valve_open();
+        ValveNowStatus = 1;
+
+        if (Valve_Alarm_Flag)
+        {
+            HAL_GPIO_WritePin(GPIOA, VALVE_1_PIN | VALVE_2_PIN, 1);
+            led_valve_alarm();
+            set_relay_on();
+            WaterScan_Clear();
+        }
+        else
+        {
+            WaterScan_Clear();
+            led_water_resume();
+            button_press();
+            valve_open();
+        }
     }
 }
 
